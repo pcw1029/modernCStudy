@@ -10,15 +10,15 @@
 #include <stdbool.h>
 #include "stack.h"
 
-int iBuff[16];
-int iTop = 0;
+static int iBuff[16];
+static int iTop = 0;
 
-bool isStackFull(void)
+static bool isStackFull(void)
 {
 	return iTop == sizeof(iBuff)/sizeof(int);
 }
 
-bool isStackEmpty(void)
+static bool isStackEmpty(void)
 {
 	return iTop == 0;
 }
