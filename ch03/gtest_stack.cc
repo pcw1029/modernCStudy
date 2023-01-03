@@ -14,27 +14,36 @@
 TEST(StackTest, popEmputyReturnFalse)
 {
 	int iRet;
-	EXPECT_EQ(false, pop(&iRet));
+	int iBuff[16];
+	STACK stStack = newStack(iBuff);
+
+	EXPECT_EQ(false, pop(&stStack, &iRet));
 }
 
 
 TEST(StackTest, popStackReturnTrue)
 {
 	int iRet;
-	EXPECT_EQ(true, push(100));
-	EXPECT_EQ(true, pop(&iRet));
+	int iBuff[16];
+	STACK stStack = newStack(iBuff);
+
+	EXPECT_EQ(true, push(&stStack, 100));
+	EXPECT_EQ(true, pop(&stStack, &iRet));
 	EXPECT_EQ(100, iRet);
 }
 
 TEST(StackTest, pushToFullStackReturnsFalse)
 {
-	int ret;
-	for (int i = 0; i < 16; ++i)
-		push(i);
-	EXPECT_EQ(false, push(100));
+	int iRet;
+	int iBuff[16];
+	STACK stStack = newStack(iBuff);
 
-	EXPECT_EQ(true, pop(&ret));
-	EXPECT_EQ(15, ret);
+	for (int i = 0; i < 16; ++i)
+		push(&stStack, i);
+	EXPECT_EQ(false, push(&stStack, 100));
+
+	EXPECT_EQ(true, pop(&stStack, &iRet));
+	EXPECT_EQ(15, iRet);
 }
 
 int main(int argc, char **argv) {

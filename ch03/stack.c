@@ -13,31 +13,32 @@
 static int iBuff[16];
 static int iTop = 0;
 
-static bool isStackFull(void)
+static bool isStackFull(const STACK *pstStack)
 {
-	return iTop == sizeof(iBuff)/sizeof(int);
+	return pstStack->iTop == pstStack->size;
 }
 
-static bool isStackEmpty(void)
+static bool isStackEmpty(const STACK *pstStack)
 {
-	return iTop == 0;
+	return pstStack->iTop == 0;
 }
 
 
-bool push(int iVal)
+bool push(STACK *pstStack, int iVal)
 {
-	if(isStackFull())
+	if(isStackFull(pstStack))
 		return false;
 
-	iBuff[iTop++] = iVal;
+	pstStack->pBuff[pstStack->iTop++] = iVal;
+
 	return true;
 }
 
-bool pop(int *piRetVal)
+bool pop(STACK *pstStack, int *piRetVal)
 {
-	if(isStackEmpty())
+	if(isStackEmpty(pstStack))
 		return false;
 
-	*piRetVal = iBuff[--iTop];
+	*piRetVal = pstStack->pBuff[--pstStack->iTop];
 	return true;
 }
