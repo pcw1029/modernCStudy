@@ -50,7 +50,8 @@ TEST(StackTest, pushToFullStackReturnsFalse)
 TEST(StackTest, pushWithRangeCheck)
 {
 	int iBuff[16];
-	STACK stStack = newStackWithRangeCheck(iBuff, 0, 9);
+	RANGE stRange = {0, 9};
+	STACK stStack = newStackWithRangeCheck(iBuff, &stRange);
 
 	EXPECT_EQ(false, push(&stStack, 10));
 	EXPECT_EQ(false, push(&stStack, -1));

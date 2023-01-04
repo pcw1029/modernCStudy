@@ -23,14 +23,14 @@ static bool isStackEmpty(const STACK *pstStack)
 	return pstStack->iTop == 0;
 }
 
-static bool isRangeOk(const STACK *pstStack, int iVal)
+static bool isRangeOk(const RANGE *pstRange, int iVal)
 {
-	return !(pstStack->needRangeCheck || (pstStack->iMin <= iVal && pstStack->iMax >= iVal));
+	return pstRange == NULL || (pstRange->iMin <= iVal && pstRange->iMax >= iVal);
 }
 
 bool push(STACK *pstStack, int iVal)
 {
-	if(!isRangeOk(pstStack, iVal) || isStackFull(pstStack))
+	if(!isRangeOk(pstStack->pstRange, iVal) || isStackFull(pstStack))
 		return false;
 
 	pstStack->pBuff[pstStack->iTop++] = iVal;
