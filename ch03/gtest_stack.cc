@@ -40,10 +40,20 @@ TEST(StackTest, pushToFullStackReturnsFalse)
 
 	for (int i = 0; i < 16; ++i)
 		push(&stStack, i);
+
 	EXPECT_EQ(false, push(&stStack, 100));
 
 	EXPECT_EQ(true, pop(&stStack, &iRet));
 	EXPECT_EQ(15, iRet);
+}
+
+TEST(StackTest, pushWithRangeCheck)
+{
+	int iBuff[16];
+	STACK stStack = newStackWithRangeCheck(iBuff, 0, 9);
+
+	EXPECT_EQ(false, push(&stStack, 10));
+	EXPECT_EQ(false, push(&stStack, -1));
 }
 
 int main(int argc, char **argv) {
