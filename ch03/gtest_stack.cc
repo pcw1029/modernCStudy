@@ -51,10 +51,24 @@ TEST(StackTest, pushWithRangeCheck)
 {
 	int iBuff[16];
 	RANGE stRange = {0, 9};
-	STACK stStack = newStackWithRangeCheck(iBuff, &stRange);
+	VALIDATOR stValidator = rangeValidator(&stRange);
+	STACK stStack = newStackWithRangeCheck(iBuff, &stValidator);
 
 	EXPECT_EQ(false, push(&stStack, 10));
 	EXPECT_EQ(false, push(&stStack, -1));
+}
+
+TEST(StackTest, pushWithPrevDataCheck)
+{
+	int iBuff[16];
+	PREVIOUS_DATA stPrevData = {0};
+	VALIDATOR stValidator = previousDataValidator(&stPrevData);
+	STACK stStack = newStackWithRangeCheck(iBuff, &stValidator);
+
+	EXPECT_EQ(true, push(&stStack, 1));
+	EXPECT_EQ(false, push(&stStack, 1));
+	EXPECT_EQ(true, push(&stStack, 2));
+	EXPECT_EQ(false, push(&stStack, 2));
 }
 
 int main(int argc, char **argv) {

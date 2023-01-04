@@ -10,8 +10,6 @@
 #include <stdbool.h>
 #include "stack.h"
 
-static int iBuff[16];
-static int iTop = 0;
 
 static bool isStackFull(const STACK *pstStack)
 {
@@ -23,14 +21,34 @@ static bool isStackEmpty(const STACK *pstStack)
 	return pstStack->iTop == 0;
 }
 
-static bool isRangeOk(const RANGE *pstRange, int iVal)
+
+bool validateRange(VALIDATOR* pstValidator, int iVal)
 {
-	return pstRange == NULL || (pstRange->iMin <= iVal && pstRange->iMax >= iVal);
+	RANGE* pstRange;
+	pstRange = (RANGE *)(pstValidator->pData);
+	return (pstRange->iMin <= iVal && pstRange->iMax >= iVal);
+}
+
+bool validatePrevious(VALIDATOR* pstValidator, int iVal)
+{
+	PREVIOUS_DATA *pstPrevData;
+	pstPrevData = (PREVIOUS_DATA *)(pstValidator->pData);
+	if(pstPrevData->iPrevData == iVal)
+		return false;
+	pstPrevData->iPrevData = iVal;
+	return true;
+}
+
+bool validate(VALIDATOR* pstValidator, int iVal)
+{
+	if(!pstValidator)
+		return true;
+	return pstValidator->validate(pstValidator, iVal);
 }
 
 bool push(STACK *pstStack, int iVal)
 {
-	if(!isRangeOk(pstStack->pstRange, iVal) || isStackFull(pstStack))
+	if(!validate(pstStack->pstValidator, iVal) || isStackFull(pstStack))
 		return false;
 
 	pstStack->pBuff[pstStack->iTop++] = iVal;
