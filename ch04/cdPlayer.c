@@ -11,8 +11,7 @@
 #include <stdbool.h>
 #include "cdPlayer.h"
 
-bool bPlayFlag;
-bool bPauseFlag;
+static STATE eCurrentState;
 
 #ifdef GTEST
 	int iCmdIndex = 0;
@@ -23,26 +22,28 @@ void initialize()
 {
 #ifdef GTEST
 	iCmdIndex = 0;
-
 #endif
-	bPlayFlag = false;
-	bPauseFlag = false;
+	eCurrentState = STATE_IDLE;
 }
 
 void onEvent(EVENT_CODE eEc)
 {
-	switch(eEc){
-	case EV_STOP:
-		if(bPlayFlag == true || bPauseFlag == true)
+	switch(eCurrentState){
+	case STATE_IDLE:
+		if(eEc == EV_PLAY_PAUSE)
+			startPlayer();
+		break;
+	case STATE_PLAY:
+		if(eEc == EV_PLAY_PAUSE)
+			pausePlayer();
+		else if(eEc == EV_STOP)
 			stopPlayer();
 		break;
-	case EV_PLAY_PAUSE:
-		if(bPlayFlag == true)
-			pausePlayer();
-		else if(bPauseFlag == true)
+	case STATE_PAUSE:
+		if(eEc == EV_PLAY_PAUSE)
 			resumePlayer();
-		else
-			startPlayer();
+		else if(eEc == EV_STOP)
+			stopPlayer();
 		break;
 	default:
 		break;
@@ -51,8 +52,7 @@ void onEvent(EVENT_CODE eEc)
 
 void stopPlayer()
 {
-	bPauseFlag = false;
-	bPlayFlag = false;
+	eCurrentState = STATE_IDLE;
 #ifdef GTEST
 	apchBuff[iCmdIndex++] = "stop";
 #endif
@@ -60,8 +60,7 @@ void stopPlayer()
 
 void pausePlayer()
 {
-	bPauseFlag = true;
-	bPlayFlag = false;
+	eCurrentState = STATE_PAUSE;
 #ifdef GTEST
 	apchBuff[iCmdIndex++] = "pause";
 #endif
@@ -69,8 +68,7 @@ void pausePlayer()
 
 void resumePlayer()
 {
-	bPauseFlag = false;
-	bPlayFlag = true;
+	eCurrentState = STATE_PLAY;
 #ifdef GTEST
 	apchBuff[iCmdIndex++] = "resume";
 #endif
@@ -78,8 +76,7 @@ void resumePlayer()
 
 void startPlayer()
 {
-	bPauseFlag = false;
-	bPlayFlag = true;
+	eCurrentState = STATE_PLAY;
 #ifdef GTEST
 	apchBuff[iCmdIndex++] = "start";
 #endif

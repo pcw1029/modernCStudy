@@ -18,7 +18,11 @@ typedef enum {
 	EV_PLAY_PAUSE
 }EVENT_CODE;
 
-
+typedef enum {
+	STATE_IDLE,
+	STATE_PLAY,
+	STATE_PAUSE
+}STATE;
 
 void initialize();
 void onEvent(EVENT_CODE eEc);
