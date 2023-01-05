@@ -10,12 +10,9 @@
 #include<stdio.h>
 
 
-int range(const char *pFileName)
-{
-	FILE* pFp = fopen(pFileName, "r");
-	if(pFp == NULL)
-		return -1;
 
+static int rangeProcessor(FILE* pFp)
+{
 	int min = INT_MAX;
 	int max = INT_MIN;
 	char achBuff[256];
@@ -25,8 +22,23 @@ int range(const char *pFileName)
 		min = (min > value)?value:min;
 		max = (max < value)?value:max;
 	}
-	fclose(pFp);
-
 	return max-min;
+}
+
+int readFile(const char *pFileName, int (*processor)(FILE *pFp))
+{
+	FILE* pFp = fopen(pFileName, "r");
+	if(pFp == NULL)
+		return -1;
+
+	int iRetValue = processor(pFp);
+
+	fclose(pFp);
+	return iRetValue;
+}
+
+int range(const char *pFileName)
+{
+	return readFile(pFileName, rangeProcessor);
 }
 
