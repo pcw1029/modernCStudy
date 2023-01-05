@@ -11,73 +11,84 @@
 #include <stdbool.h>
 #include "cdPlayer.h"
 
-static STATE eCurrentState;
-
 #ifdef GTEST
 	int iCmdIndex = 0;
 	const char *apchBuff[10];
 #endif
+
+static const STATE *pstCurrentState;
+
+static const STATE *ignore(const STATE *pstState);
+static const STATE *startPlay(const STATE *pstState);
+static const STATE *stopPlay(const STATE *pstState);
+static const STATE *pausePlay(const STATE *pstState);
+static const STATE *resumePlay(const STATE *pstState);
+
+const STATE IDLE = {
+		ignore,
+		startPlay
+};
+
+const STATE PLAY = {
+		stopPlay,
+		pausePlay
+};
+
+const STATE PAUSE = {
+		stopPlay,
+		resumePlay
+};
 
 void initialize()
 {
 #ifdef GTEST
 	iCmdIndex = 0;
 #endif
-	eCurrentState = STATE_IDLE;
+	pstCurrentState = &IDLE;
 }
 
-void onEvent(EVENT_CODE eEc)
+void onStop()
 {
-	switch(eCurrentState){
-	case STATE_IDLE:
-		if(eEc == EV_PLAY_PAUSE)
-			startPlayer();
-		break;
-	case STATE_PLAY:
-		if(eEc == EV_PLAY_PAUSE)
-			pausePlayer();
-		else if(eEc == EV_STOP)
-			stopPlayer();
-		break;
-	case STATE_PAUSE:
-		if(eEc == EV_PLAY_PAUSE)
-			resumePlayer();
-		else if(eEc == EV_STOP)
-			stopPlayer();
-		break;
-	default:
-		break;
-	}
+	pstCurrentState = pstCurrentState->stop(pstCurrentState);
 }
 
-void stopPlayer()
+void onPlayOrPause()
 {
-	eCurrentState = STATE_IDLE;
-#ifdef GTEST
-	apchBuff[iCmdIndex++] = "stop";
-#endif
+	pstCurrentState = pstCurrentState->playOrPause(pstCurrentState);
 }
 
-void pausePlayer()
+static const STATE *ignore(const STATE *pstState)
 {
-	eCurrentState = STATE_PAUSE;
-#ifdef GTEST
-	apchBuff[iCmdIndex++] = "pause";
-#endif
+	return pstCurrentState;
 }
 
-void resumePlayer()
+static const STATE *startPlay(const STATE *pstState)
 {
-	eCurrentState = STATE_PLAY;
-#ifdef GTEST
-	apchBuff[iCmdIndex++] = "resume";
-#endif
-}
-
-void startPlayer()
-{
-	eCurrentState = STATE_PLAY;
 #ifdef GTEST
 	apchBuff[iCmdIndex++] = "start";
 #endif
+	return &PLAY;
+}
+
+static const STATE *stopPlay(const STATE *pstState)
+{
+#ifdef GTEST
+	apchBuff[iCmdIndex++] = "stop";
+#endif
+	return &IDLE;
+}
+
+static const STATE *pausePlay(const STATE *pstState)
+{
+#ifdef GTEST
+	apchBuff[iCmdIndex++] = "pause";
+#endif
+	return &PAUSE;
+}
+static const STATE *resumePlay(const STATE *pstState)
+{
+#ifdef GTEST
+	apchBuff[iCmdIndex++] = "resume";
+#endif
+	return &PLAY;
 }

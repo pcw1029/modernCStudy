@@ -13,23 +13,14 @@ extern "C" {
 #endif
 
 
-typedef enum {
-	EV_STOP,
-	EV_PLAY_PAUSE
-}EVENT_CODE;
-
-typedef enum {
-	STATE_IDLE,
-	STATE_PLAY,
-	STATE_PAUSE
+typedef struct _State{
+	const struct _State *(*stop)(const struct _State *pstState);
+	const struct _State *(*playOrPause)(const struct _State *pstState);
 }STATE;
 
 void initialize();
-void onEvent(EVENT_CODE eEc);
-void stopPlayer();
-void pausePlayer();
-void resumePlayer();
-void startPlayer();
+void onStop();
+void onPlayOrPause();
 
 #ifdef GTEST
 	extern int iCmdIndex;
