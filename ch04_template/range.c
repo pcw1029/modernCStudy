@@ -5,11 +5,15 @@
  *      Author: pcw1029
  */
 
+#include "fileReader.h"
 #include<limits.h>
 #include<stdlib.h>
 #include<stdio.h>
 
-
+typedef struct {
+	FILE_READER_CONTEXT stBase;
+	int iResult;
+}MY_FILE_READER_CONTEXT;
 
 static int rangeProcessor(FILE* pFp)
 {
@@ -25,20 +29,19 @@ static int rangeProcessor(FILE* pFp)
 	return max-min;
 }
 
-int readFile(const char *pFileName, int (*processor)(FILE *pFp))
+
+static void calculateRange(FILE_READER_CONTEXT *pstFileReaderContext, FILE *pFp)
 {
-	FILE* pFp = fopen(pFileName, "r");
-	if(pFp == NULL)
-		return -1;
-
-	int iRetValue = processor(pFp);
-
-	fclose(pFp);
-	return iRetValue;
+	MY_FILE_READER_CONTEXT *pstMyFileReaderContext = (MY_FILE_READER_CONTEXT *)pstFileReaderContext;
+	pstMyFileReaderContext->iResult = rangeProcessor(pFp);
 }
 
-int range(const char *pFileName)
+int range(const char *pchFileName)
 {
-	return readFile(pFileName, rangeProcessor);
-}
+	MY_FILE_READER_CONTEXT stMyFileReaderContext = {{pchFileName, calculateRange}, 0};
 
+	if(readFile(&stMyFileReaderContext.stBase) != 0){
+		fprintf(stderr,"Cannot open file %s\n", pchFileName);
+	}
+	return stMyFileReaderContext.iResult;
+}
