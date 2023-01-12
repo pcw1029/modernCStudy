@@ -17,13 +17,15 @@ extern "C"{
 
 
 typedef struct FileAccessorContext{
+	FILE* pFp;
 	const char * const pchFileName;
 	const char * const pchMode;
-	void (* const processer)(struct FileAccessorContext *pstFileAccessorContext, FILE* pFp);
+	bool (* const processer)(struct FileAccessorContext *pstFileAccessorContext);
 }FILE_ACCESSOR_CONTEXT;
 
 
 bool accessFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext);
+FILE* getFilePointer(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext);
 
 #ifdef __cplusplus
 }

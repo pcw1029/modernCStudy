@@ -18,9 +18,10 @@ extern "C" {
 typedef struct BufferContext {
 	void *pvBuff;
 	size_t size;
-	void (*processor)(struct BufferContext *pstBufferContext);
+	bool (*processor)(struct BufferContext *pstBufferContext);
 }BUFFER_CONTEXT;
 
+void* allocateBuffer(BUFFER_CONTEXT* pstBufferContext, size_t size);
 bool buffer(BUFFER_CONTEXT *pstBufferContext);
 #ifdef __cplusplus
 }
