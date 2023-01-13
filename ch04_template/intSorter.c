@@ -84,14 +84,23 @@ static int comparator(const void* pvData1, const void* pvData2){
 static bool doWithBuffer(BUFFER_CONTEXT *pstBufferContext)
 {
 	MY_BUFFER_CONTEXT *pstMyBufferContext = (MY_BUFFER_CONTEXT *)pstBufferContext;
-	MY_FILE_ACCESSOR_CONTEXT stReadFileAccessorContext = {{NULL, pstMyBufferContext->pstContext->pchFileName, "rb", reader, &_stFileErrorObserver}, pstMyBufferContext};
+	void *pvObserverTable[4];
+	MY_FILE_ACCESSOR_CONTEXT stReadFileAccessorContext = {\
+			{NULL, pstMyBufferContext->pstContext->pchFileName, "rb", NEW_ARRAY_LIST(pvObserverTable), reader},\
+			pstMyBufferContext};
+
+	addFileErrorObserver(&stReadFileAccessorContext.stFileAccessorContext, &_stFileErrorObserver);
 	if(!accessFile(&stReadFileAccessorContext.stFileAccessorContext)){
 		return false;
 	}
 
 	qsort(pstBufferContext->pvBuff, pstBufferContext->size/sizeof(int), sizeof(int), comparator);
 
-	MY_FILE_ACCESSOR_CONTEXT stWriteFileAccessorContext = {{NULL, pstMyBufferContext->pstContext->pchFileName, "wb", writer, &_stFileErrorObserver}, pstMyBufferContext};
+	MY_FILE_ACCESSOR_CONTEXT stWriteFileAccessorContext = {\
+			{NULL, pstMyBufferContext->pstContext->pchFileName, "wb", NEW_ARRAY_LIST(pvObserverTable), writer},\
+			pstMyBufferContext};
+
+	addFileErrorObserver(&stWriteFileAccessorContext.stFileAccessorContext, &_stFileErrorObserver);
 	if(!accessFile(&stWriteFileAccessorContext.stFileAccessorContext)){
 		return false;
 	}
@@ -100,7 +109,8 @@ static bool doWithBuffer(BUFFER_CONTEXT *pstBufferContext)
 
 static void fileError(FILE_ERROR_OBSERVER* pstFileErrorObserver, FILE_ACCESSOR_CONTEXT *pstFileAccessorContext)
 {
-	g_stFileErrorObserver.onError(pstFileErrorObserver, pstFileAccessorContext);
+	fprintf(stderr,"File Access Error %s(mode:%s):%s\n", \
+			pstFileAccessorContext->pchFileName, pstFileAccessorContext->pchMode, strerror(errno));
 	MY_FILE_ACCESSOR_CONTEXT *pstMyFileAccessorContext = (MY_FILE_ACCESSOR_CONTEXT *)pstFileAccessorContext;
 	pstMyFileAccessorContext->pstMyBufferContext->pstContext->iErrorCategory = ERR_CAT_FILE;
 }

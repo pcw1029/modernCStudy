@@ -10,20 +10,17 @@
 #include <errno.h>
 #include <string.h>
 
-static void defaultFileErrorHandler(FILE_ERROR_OBSERVER *pstThis, FILE_ACCESSOR_CONTEXT *pstFileAccessorContext);
-FILE_ERROR_OBSERVER g_stFileErrorObserver = {
-		&defaultFileErrorHandler
-};
+static void fileError(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext);
 
 bool accessFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext)
 {
 	assert(pstFileAccessorContext);
-	if(pstFileAccessorContext->pstFileErrorObserver == NULL)
-		pstFileAccessorContext->pstFileErrorObserver = &g_stFileErrorObserver;
 	bool bRet = pstFileAccessorContext->processer(pstFileAccessorContext);
 	if(pstFileAccessorContext->pFp != NULL){
-		if(fclose(pstFileAccessorContext->pFp)!=0)
+		if(fclose(pstFileAccessorContext->pFp)!=0){
+			fileError(pstFileAccessorContext);
 			bRet = false;
+		}
 	}
 	return bRet;
 }
@@ -33,16 +30,11 @@ FILE* getFilePointer(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext)
 	assert(pstFileAccessorContext);
 	if(pstFileAccessorContext->pFp == NULL){
 		pstFileAccessorContext->pFp = fopen(pstFileAccessorContext->pchFileName, pstFileAccessorContext->pchMode);
-		if(pstFileAccessorContext->pFp == NULL)
-			pstFileAccessorContext->pstFileErrorObserver->onError(pstFileAccessorContext->pstFileErrorObserver, pstFileAccessorContext);
+		if(pstFileAccessorContext->pFp == NULL){
+			fileError(pstFileAccessorContext);
+		}
 	}
 	return pstFileAccessorContext->pFp;
-}
-
-static void defaultFileErrorHandler(FILE_ERROR_OBSERVER *pstThis, FILE_ACCESSOR_CONTEXT *pstFileAccessorContext)
-{
-	fprintf(stderr,"File access error %s(mode:%s):%s\n", pstFileAccessorContext->pchFileName, \
-			pstFileAccessorContext->pchMode, strerror(errno));
 }
 
 long fileSize(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext)
@@ -67,7 +59,12 @@ long fileCurrentPos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext)
 	FILE *pFp = getFilePointer(pstFileAccessorContext);
 	if(pFp == NULL)
 		return -1;
-	return ftell(pFp);
+
+	long lRet = ftell(pFp);
+	if(lRet < 0)
+		fileError(pstFileAccessorContext);
+
+	return lRet;
 }
 
 int setFilePos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, long offset, int iWhence)
@@ -76,7 +73,12 @@ int setFilePos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, long offset, int i
 	FILE* pFp = getFilePointer(pstFileAccessorContext);
 	if(pFp == NULL)
 		return -1;
-	return fseek(pFp, offset, iWhence);
+
+	int iRet = fseek(pFp, offset, iWhence);
+	if(iRet != 0)
+		fileError(pstFileAccessorContext);
+
+	return iRet;
 }
 
 bool readFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, BUFFER_CONTEXT *pstBufferContext)
@@ -86,7 +88,7 @@ bool readFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, BUFFER_CONTEXT *pst
 		return false;
 
 	if(pstBufferContext->size != fread(pstBufferContext->pvBuff, sizeof(char), pstBufferContext->size, pFp)){
-		pstFileAccessorContext->pstFileErrorObserver->onError(pstFileAccessorContext->pstFileErrorObserver, pstFileAccessorContext);
+		fileError(pstFileAccessorContext);
 		return false;
 	}
 	return true;
@@ -99,8 +101,27 @@ bool writeFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, BUFFER_CONTEXT *ps
 		return false;
 
 	if(pstBufferContext->size != fwrite(pstBufferContext->pvBuff, sizeof(char), pstBufferContext->size, pFp)){
-		pstFileAccessorContext->pstFileErrorObserver->onError(pstFileAccessorContext->pstFileErrorObserver, pstFileAccessorContext);
+		fileError(pstFileAccessorContext);
 		return false;
 	}
 	return true;
+}
+
+void addFileErrorObserver(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext, FILE_ERROR_OBSERVER *pstFileErrorObserver){
+	ARRAY_LIST *pstArrayList = &pstFileAccessorContext->stArrayObserverTable;
+	pstArrayList->add(pstArrayList, pstFileErrorObserver);
+}
+
+void removeFileErrorObserver(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext, FILE_ERROR_OBSERVER *pstFileErrorObserver){
+	ARRAY_LIST *pstArrayList = &pstFileAccessorContext->stArrayObserverTable;
+	pstArrayList->remove(pstArrayList, pstFileErrorObserver);
+}
+
+static void fileError(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext)
+{
+	ARRAY_LIST *pstArrayList = &pstFileAccessorContext->stArrayObserverTable;
+	for(int i=0; i<pstArrayList->index; ++i){
+		FILE_ERROR_OBSERVER *pstFileErrorObserver = pstArrayList->get(pstArrayList, i);
+		pstFileErrorObserver->onError(pstFileErrorObserver, pstFileAccessorContext);
+	}
 }

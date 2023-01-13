@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "buffer.h"
+#include "array_list.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -21,14 +22,14 @@ typedef struct FileErrorObserver{
 	void (* const onError)(struct FileErrorObserver *pstThis, struct FileAccessorContext *pstFileAccessorContext);
 }FILE_ERROR_OBSERVER;
 
-extern FILE_ERROR_OBSERVER g_stFileErrorObserver;
 
 typedef struct FileAccessorContext{
 	FILE* pFp;
 	const char * const pchFileName;
 	const char * const pchMode;
+	ARRAY_LIST stArrayObserverTable;
+
 	bool (* const processer)(struct FileAccessorContext *pstFileAccessorContext);
-	FILE_ERROR_OBSERVER *pstFileErrorObserver;
 }FILE_ACCESSOR_CONTEXT;
 
 
@@ -40,7 +41,8 @@ long fileCurrentPos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext);
 int setFilePos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, long offset, int iWhence);
 bool readFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, BUFFER_CONTEXT *pstBufferContext);
 bool writeFile(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, BUFFER_CONTEXT *pstBufferContext);
-
+void addFileErrorObserver(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext, FILE_ERROR_OBSERVER *pstFileErrorObserver);
+void removeFileErrorObserver(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext, FILE_ERROR_OBSERVER *pstFileErrorObserver);
 #ifdef __cplusplus
 }
 #endif
