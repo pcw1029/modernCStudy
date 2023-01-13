@@ -51,7 +51,7 @@ TEST(TemplateTest, emptyFile)
 	FILE *pFp = fopen(achTmpFileName, "w");
 	EXPECT_EQ(0, fclose(pFp));
 
-	intSorter(achTmpFileName);
+	intSorter("aaa");
 }
 
 

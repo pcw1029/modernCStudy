@@ -31,10 +31,13 @@ typedef struct{
 	long size;
 }SIZE_GETTER_CONTEXT;
 
-static bool doWithBuffer(BUFFER_CONTEXT *pstBufferContext);
-static void fileError(CONTEXT *pstContext);
-static long fileSize(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext);
 
+static bool doWithBuffer(BUFFER_CONTEXT *pstBufferContext);
+static void fileError(FILE_ERROR_OBSERVER* pstFileErrorObserver, FILE_ACCESSOR_CONTEXT *pstFileAccessorContext);
+
+static FILE_ERROR_OBSERVER _stFileErrorObserver = {
+	fileError
+};
 
 INT_SORTER_ERROR intSorter(const char* pchFileName)
 {
@@ -48,40 +51,24 @@ INT_SORTER_ERROR intSorter(const char* pchFileName)
 static bool reader(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext)
 {
 	MY_FILE_ACCESSOR_CONTEXT *pstMyFileAccesorContext = (MY_FILE_ACCESSOR_CONTEXT *)pstFileAccessorContext;
-	MY_BUFFER_CONTEXT *pstMyBufferContext = pstMyFileAccesorContext->pstMyBufferContext;
 	long size = fileSize(pstFileAccessorContext);
 	if(size == -1){
-		fileError(pstMyBufferContext->pstContext);
 		return false;
 	}
 
-	if(!allocateBuffer(&pstMyBufferContext->stBufferContext.pvBuff, size)){
-		pstMyBufferContext->pstContext->iErrorCategory = ERR_CAT_MEMORY;
+	if(allocateBuffer(&pstMyFileAccesorContext->pstMyBufferContext->stBufferContext, size)==NULL){
+		pstMyFileAccesorContext->pstMyBufferContext->pstContext->iErrorCategory = ERR_CAT_MEMORY;
 		return false;
 	}
 
-	FILE* pFp = getFilePointer(pstFileAccessorContext);
-	if(pstMyBufferContext->stBufferContext.size != \
-			fread(pstMyBufferContext->stBufferContext.pvBuff, sizeof(char), pstMyBufferContext->stBufferContext.size, pFp)){
-		fileError(pstMyBufferContext->pstContext);
-		return false;
-	}
-	return true;
+	return readFile(pstFileAccessorContext, &pstMyFileAccesorContext->pstMyBufferContext->stBufferContext);
 }
 
 static bool writer(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext)
 {
-	size_t size;
 	MY_FILE_ACCESSOR_CONTEXT *pstMyFileAccesorContext = (MY_FILE_ACCESSOR_CONTEXT *)pstFileAccessorContext;
-	MY_BUFFER_CONTEXT *pstMyBufferContext = pstMyFileAccesorContext->pstMyBufferContext;
 
-	FILE* pFp = getFilePointer(pstFileAccessorContext);
-	size = fwrite(pstMyBufferContext->stBufferContext.pvBuff, sizeof(char), pstMyBufferContext->stBufferContext.size, pFp);
-	if(pstMyBufferContext->stBufferContext.size != size){
-		fileError(pstMyBufferContext->pstContext);
-		return false;
-	}
-	return true;
+	return writeFile(pstFileAccessorContext, &pstMyFileAccesorContext->pstMyBufferContext->stBufferContext);
 }
 
 static int comparator(const void* pvData1, const void* pvData2){
@@ -97,26 +84,25 @@ static int comparator(const void* pvData1, const void* pvData2){
 static bool doWithBuffer(BUFFER_CONTEXT *pstBufferContext)
 {
 	MY_BUFFER_CONTEXT *pstMyBufferContext = (MY_BUFFER_CONTEXT *)pstBufferContext;
-	MY_FILE_ACCESSOR_CONTEXT stReadFileAccessorContext = {{NULL, pstMyBufferContext->pstContext->pchFileName, "rb", reader}, pstMyBufferContext};
+	MY_FILE_ACCESSOR_CONTEXT stReadFileAccessorContext = {{NULL, pstMyBufferContext->pstContext->pchFileName, "rb", reader, &_stFileErrorObserver}, pstMyBufferContext};
 	if(!accessFile(&stReadFileAccessorContext.stFileAccessorContext)){
-		fileError(pstMyBufferContext->pstContext);
 		return false;
 	}
 
 	qsort(pstBufferContext->pvBuff, pstBufferContext->size/sizeof(int), sizeof(int), comparator);
 
-	MY_FILE_ACCESSOR_CONTEXT stWriteFileAccessorContext = {{NULL, pstMyBufferContext->pstContext->pchFileName, "wb", writer}, pstMyBufferContext};
+	MY_FILE_ACCESSOR_CONTEXT stWriteFileAccessorContext = {{NULL, pstMyBufferContext->pstContext->pchFileName, "wb", writer, &_stFileErrorObserver}, pstMyBufferContext};
 	if(!accessFile(&stWriteFileAccessorContext.stFileAccessorContext)){
-		fileError(pstMyBufferContext->pstContext);
 		return false;
 	}
 	return true;
 }
 
-static void fileError(CONTEXT *pstContext)
+static void fileError(FILE_ERROR_OBSERVER* pstFileErrorObserver, FILE_ACCESSOR_CONTEXT *pstFileAccessorContext)
 {
-	fprintf(stderr,"%s:%s\n", pstContext->pchFileName, strerror(errno));
-	pstContext->iErrorCategory = ERR_CAT_FILE;
+	g_stFileErrorObserver.onError(pstFileErrorObserver, pstFileAccessorContext);
+	MY_FILE_ACCESSOR_CONTEXT *pstMyFileAccessorContext = (MY_FILE_ACCESSOR_CONTEXT *)pstFileAccessorContext;
+	pstMyFileAccessorContext->pstMyBufferContext->pstContext->iErrorCategory = ERR_CAT_FILE;
 }
 
 static void sizeReader(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, FILE* pFp)
@@ -127,39 +113,5 @@ static void sizeReader(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, FILE* pFp)
 	if(fseek(pFp, 0, SEEK_END) == 0){
 		pstSizeGetterContext->size = ftell(pFp);
 	}
-}
-
-static long fileCurrentPos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext)
-{
-	assert(pstFileAccessorContext);
-	FILE *pFp = getFilePointer(pstFileAccessorContext);
-	if(pFp == NULL)
-		return -1;
-	return ftell(pFp);
-}
-
-static int setFilePos(FILE_ACCESSOR_CONTEXT *pstFileAccessorContext, long offset, int iWhence)
-{
-	assert(pstFileAccessorContext);
-	FILE* pFp = getFilePointer(pstFileAccessorContext);
-	if(pFp == NULL)
-		return -1;
-	return fseek(pFp, offset, iWhence);
-}
-
-static long fileSize(FILE_ACCESSOR_CONTEXT* pstFileAccessorContext)
-{
-	long size = fileCurrentPos(pstFileAccessorContext);
-	if(size < 0)
-		return -1;
-
-	if(setFilePos(pstFileAccessorContext, 0, SEEK_END)!=0)
-		return -1;
-
-	size = fileCurrentPos(pstFileAccessorContext);
-	if(setFilePos(pstFileAccessorContext, 0, SEEK_SET)!=0)
-		return -1;
-
-	return size;
 }
 
